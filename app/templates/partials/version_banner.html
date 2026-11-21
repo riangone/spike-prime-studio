@@ -1,0 +1,47 @@
+<!-- v1 Starter (Bug) vs v2 Improved (Solution) iteration banner -->
+<div class="rounded-xl border {% if lesson.program_version == 'v1' %}border-warning/60 bg-warning/10{% else %}border-success/50 bg-success/10{% endif %} p-3.5 space-y-2.5" data-version-banner>
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold uppercase tracking-wider opacity-75">🔬 {{ ui.ver_switch_label }}:</span>
+      <div class="join">
+        <button type="button"
+                data-ver-switch="v1"
+                hx-get="{{ base }}/partials/lesson/{{ lesson.id }}?step={{ current_step.step }}&lang={{ lang }}{% if program_mode != 'blockly' %}&mode={{ program_mode }}{% endif %}&ver=v1"
+                hx-target="#lesson-workspace"
+                hx-swap="innerHTML"
+                class="btn btn-xs sm:btn-sm join-item {% if lesson.program_version == 'v1' %}btn-warning font-bold{% else %}btn-outline{% endif %}">
+          {{ ui.ver_v1_btn }}
+        </button>
+        <button type="button"
+                data-ver-switch="v2"
+                hx-get="{{ base }}/partials/lesson/{{ lesson.id }}?step={{ current_step.step }}&lang={{ lang }}{% if program_mode != 'blockly' %}&mode={{ program_mode }}{% endif %}&ver=v2"
+                hx-target="#lesson-workspace"
+                hx-swap="innerHTML"
+                class="btn btn-xs sm:btn-sm join-item {% if lesson.program_version == 'v2' %}btn-success font-bold{% else %}btn-outline{% endif %}">
+          {{ ui.ver_v2_btn }}
+        </button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-xs sm:btn-sm btn-neutral font-bold" data-sim-action="run">
+      ▶ {{ ui.sim_run }} ({{ lesson.program_version|upper }})
+    </button>
+  </div>
+
+  {% if lesson.program_version == 'v1' %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+    <div class="bg-base-100/90 rounded-lg p-3 border border-warning/40 space-y-1">
+      <div class="font-bold text-warning">⚠️ {{ ui.ver_problem_title }}</div>
+      <p class="leading-relaxed opacity-90">{{ lesson.version_info.v1_problem }}</p>
+    </div>
+    <div class="bg-base-100/90 rounded-lg p-3 border border-base-300 space-y-1">
+      <div class="font-bold text-info">🔍 {{ ui.ver_why_title }}</div>
+      <p class="leading-relaxed opacity-90">{{ lesson.version_info.v1_why }}</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-base-100/90 rounded-lg p-3 border border-success/40 text-xs sm:text-sm space-y-1">
+    <div class="font-bold text-success">✅ {{ ui.ver_fix_title }}</div>
+    <p class="leading-relaxed opacity-90">{{ lesson.version_info.v2_fix }}</p>
+  </div>
+  {% endif %}
+</div>

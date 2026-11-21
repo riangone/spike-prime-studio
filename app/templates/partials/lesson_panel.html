@@ -1,0 +1,238 @@
+<div class="space-y-4" data-lesson-root data-lesson-id="{{ lesson.id }}" data-lang="{{ lang }}" data-program-mode="{{ program_mode }}" data-program-version="{{ lesson.program_version }}">
+  <!-- Lesson Header -->
+  <div class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4 sm:p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-bold">{{ lesson.title }}</h1>
+          <p class="text-sm opacity-75 mt-1">{{ lesson.summary }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <div class="badge badge-warning gap-1" title="{{ ui.level_stars }}">{% for n in range(5) %}{% if n < lesson.stars %}★{% else %}<span class="opacity-40">☆</span>{% endif %}{% endfor %}</div>
+          <div class="badge badge-primary badge-outline">{{ lesson.difficulty }}</div>
+          <div class="badge badge-secondary badge-outline">{{ ui.duration }}: {{ lesson.duration }}</div>
+          <div class="badge badge-accent badge-outline">{{ ui.parts_count }}: {{ lesson.total_parts }}</div>
+        </div>
+      </div>
+
+      {% if lesson.concepts %}
+      <div class="flex flex-wrap items-center gap-1.5 mt-2">
+        <span class="text-xs opacity-70">{{ ui.concepts_label }}:</span>
+        {% for c in lesson.concepts %}<span class="badge badge-sm badge-ghost">{{ c }}</span>{% endfor %}
+      </div>
+      {% endif %}
+
+      {% if lesson.ports %}
+      <!-- Port Wiring Overview -->
+      <div class="mt-3 pt-3 border-t border-base-300 space-y-2">
+        <div class="text-xs font-bold uppercase tracking-wider opacity-70">⚡ {{ ui.port_map }}</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {% for p in lesson.ports %}
+          <div class="flex items-start gap-2 bg-base-200/80 rounded-lg px-3 py-2 border border-base-300">
+            <span class="badge badge-warning font-mono font-bold mt-0.5 shrink-0">{{ p.port }}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-semibold">{{ p.device }}</div>
+              {% if p.note %}
+              <div class="text-[11px] opacity-75 leading-snug mt-0.5">{{ p.note }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tabs: Build / Blocks / Code / Deploy.
+       Do NOT wrap the tablist in DaisyUI's `.tabs` grid: a `grid-column: span 9999` panel inside that grid
+       called `calc(-webkit-calc(0px - 100vw) + 100%)`, the outer grid grew to page width and every panel
+       squeezed the tab row (the "tabs get narrower on another tab" bug). The tablist is now an isolated
+       flex row with the same lifted-tab look (app/static/css/studio.css). -->
+  <div data-tabs class="flex flex-col min-w-0">
+  <div role="tablist" class="tabs-lifted-row overflow-x-auto overflow-y-hidden" aria-label="{{ ui.tabs_label }}">
+    <button type="button" role="tab" class="tab tab-active whitespace-nowrap font-semibold px-2.5 sm:px-4" data-tab="build" aria-selected="true">🧱 <span class="hidden sm:inline">{{ ui.build_tab }}</span><span class="sm:hidden">{{ ui.build_tab_short }}</span></button>
+    <button type="button" role="tab" class="tab whitespace-nowrap font-semibold px-2.5 sm:px-4" data-tab="blocks" aria-selected="false" aria-controls="tab-panel-blocks">🧩 <span class="hidden sm:inline">{{ ui.blocks_tab }}</span><span class="sm:hidden">{{ ui.blocks_tab_short }}</span></button>
+    <button type="button" role="tab" class="tab whitespace-nowrap font-semibold px-2.5 sm:px-4" data-tab="code" aria-selected="false" aria-controls="tab-panel-code">🐍 <span class="hidden sm:inline">{{ ui.code_tab }}</span><span class="sm:hidden">{{ ui.code_tab_short }}</span></button>
+    <button type="button" role="tab" class="tab whitespace-nowrap font-semibold px-2.5 sm:px-4" data-tab="deploy" aria-selected="false" aria-controls="tab-panel-deploy">⬇ <span class="hidden sm:inline">{{ ui.deploy_tab }}</span><span class="sm:hidden">{{ ui.deploy_tab_short }}</span></button>
+    <div class="lifted-spacer" aria-hidden="true"></div>
+  </div>
+    <!-- Tab 1: 3D Build Guide -->
+    <div role="tabpanel" id="tab-panel-build" data-tab-panel="build" class="tab-panel bg-base-100 border border-base-300 border-t-0 rounded-b-box p-4 sm:p-5">
+      <div id="step-detail-panel">
+        {% include "partials/step_detail.html" %}
+      </div>
+    </div>
+
+    <!-- Tab 2: Scratch blocks (Blockly is lazy-loaded the first time this tab opens) -->
+    <div role="tabpanel" id="tab-panel-blocks" data-tab-panel="blocks" hidden class="tab-panel bg-base-100 border border-base-300 border-t-0 rounded-b-box p-4 sm:p-5 space-y-3">
+      {% include "partials/version_banner.html" %}
+      <p class="text-sm opacity-80">{{ ui.blocks_intro }}</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn btn-sm btn-primary" data-blocks-action="to-hub">▶ {{ ui.blocks_to_hub }}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-blocks-action="copy" data-copied-label="{{ ui.copied }}">{{ ui.blocks_copy }}</button>
+        <button type="button" class="btn btn-sm btn-outline" data-blocks-action="download">{{ ui.blocks_download }}</button>
+        <a href="{{ base }}/download/{{ lesson.id }}.sb3?lang={{ lang }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-outline" title="{{ ui.sb3_hint }}">{{ ui.blocks_download_sb3 }}</a>
+        <button type="button" class="btn btn-sm btn-ghost" data-blocks-action="reset">↺ {{ ui.blocks_reset }}</button>
+      </div>
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div class="xl:col-span-8 min-w-0">
+          <div id="blockly-host"
+               class="w-full h-[560px] rounded-xl border border-base-300 overflow-hidden bg-white relative"
+               data-lesson-id="{{ lesson.id }}"
+               data-blocks-mode="{{ program_mode }}"
+               data-blocks-version="{{ lesson.program_version }}"
+               data-blocks-i18n='{{ ui|tojson }}'>
+            <div class="absolute inset-0 flex items-center justify-center text-sm text-slate-500" data-blocks-status>{{ ui.blocks_loading }}</div>
+          </div>
+          <script type="text/xml" id="lesson-blocks-xml">{{ lesson.blocks_xml|safe }}</script>
+          <script type="application/json" id="lesson-scratch-vars">{{ lesson.blocks_vars|tojson }}</script>
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs opacity-60">{{ ui.blocks_saved }}</p>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] opacity-60">{{ ui.program_dialect }}:</span>
+              {% for m in lesson.program_modes %}
+              <a href="{{ base }}/?lesson={{ lesson.id }}&step={{ current_step.step }}&lang={{ lang }}&tab=blocks{% if m.id == 'scratch' %}&mode=scratch{% endif %}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}"
+                 class="btn btn-xs {% if m.id == lesson.program_mode %}btn-neutral{% else %}btn-ghost{% endif %}">{{ m.label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+          <p class="text-xs opacity-70 mt-1 leading-relaxed">{{ ui.blocks_in_scratch }}</p>
+        </div>
+        <div class="xl:col-span-4 min-w-0 space-y-3">
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider opacity-75 mb-1.5">{{ ui.blocks_generated }}</div>
+            <pre id="blocks-python" class="bg-slate-950 text-slate-100 text-xs p-3 rounded-lg max-h-[300px] overflow-auto font-mono whitespace-pre"></pre>
+          </div>
+          <div class="alert bg-base-200 border border-base-300 text-xs items-start">
+            <div><strong>{{ ui.blocks_hint_title }}：</strong>{{ ui.blocks_hint }}</div>
+          </div>
+          {% include "partials/challenges.html" %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Python Code Guide -->
+    <div role="tabpanel" id="tab-panel-code" data-tab-panel="code" hidden class="tab-panel bg-base-100 border border-base-300 border-t-0 rounded-b-box p-4 sm:p-5 space-y-4">
+      {% include "partials/version_banner.html" %}
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-sm btn-outline"
+                  data-copy-code data-copied-label="{{ ui.copied }}">
+            {{ ui.copy_code }}
+          </button>
+          <a href="{{ base }}/download/{{ lesson.id }}.py?lang={{ lang }}&mode={{ program_mode }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-primary">
+            {{ ui.download_py }}
+          </a>
+          <a href="{{ base }}/download/{{ lesson.id }}.llsp3?lang={{ lang }}&mode={{ program_mode }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-warning">
+            {{ ui.download_llsp3 }}
+          </a>
+          <a href="{{ base }}/download/{{ lesson.id }}.sb3?lang={{ lang }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-outline" title="{{ ui.sb3_hint }}">
+            {{ ui.blocks_download_sb3 }}
+          </a>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <!-- Code Block -->
+        <div class="xl:col-span-7 min-w-0 mockup-code bg-slate-950 text-slate-100 text-xs sm:text-sm overflow-x-auto">
+          <pre id="spike-python-code" class="hidden">{{ lesson.code }}</pre>
+          {% for line_no, text in lesson.code_lines %}
+          <pre data-prefix="{{ line_no }}"><code>{{ text }}</code></pre>
+          {% endfor %}
+        </div>
+
+        <!-- Line-by-line Explanation -->
+        <div class="xl:col-span-5 min-w-0 space-y-2.5">
+          <h3 class="font-bold text-sm uppercase tracking-wider opacity-75">{{ ui.code_explanation }}</h3>
+          {% for exp in lesson.code_explanations %}
+          <div class="card bg-base-200 border border-base-300">
+            <div class="card-body p-3.5">
+              <div class="flex items-center gap-2">
+                <span class="badge badge-info badge-sm font-mono">{{ ui.lines }} {{ exp.lines }}</span>
+                <span class="font-semibold text-sm">{{ exp.title }}</span>
+              </div>
+              <p class="text-xs sm:text-sm opacity-85 mt-1 leading-relaxed">{{ exp.desc }}</p>
+            </div>
+          </div>
+          {% endfor %}
+          {% include "partials/challenges.html" %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Deploy to Hub -->
+    <div role="tabpanel" id="tab-panel-deploy" data-tab-panel="deploy" hidden class="tab-panel bg-base-100 border border-base-300 border-t-0 rounded-b-box p-4 sm:p-5 space-y-4">
+      <h3 class="font-bold text-base">{{ ui.deploy_guide_title }}</h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card bg-base-200 border border-base-300">
+          <div class="card-body p-4">
+            <h4 class="font-bold text-sm text-warning">{{ ui.deploy_method_1_title }}</h4>
+            <p class="text-xs sm:text-sm opacity-85">{{ ui.deploy_method_1_desc }}</p>
+            <div class="card-actions mt-2">
+              <a href="{{ base }}/download/{{ lesson.id }}.llsp3?lang={{ lang }}&mode={{ program_mode }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-warning">
+                {{ ui.download_llsp3 }}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 border border-base-300">
+          <div class="card-body p-4">
+            <h4 class="font-bold text-sm text-primary">{{ ui.deploy_method_2_title }}</h4>
+            <p class="text-xs sm:text-sm opacity-85">{{ ui.deploy_method_2_desc }}</p>
+            <div class="card-actions mt-2">
+              <a href="{{ base }}/download/{{ lesson.id }}.py?lang={{ lang }}&mode={{ program_mode }}{% if lesson.program_version != 'v2' %}&ver={{ lesson.program_version }}{% endif %}" class="btn btn-sm btn-primary">
+                {{ ui.download_py }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Direct upload over the SPIKE 3 protocol (Web Bluetooth / Web Serial) -->
+      <div id="device-panel" class="card bg-base-200 border border-base-300"
+           data-i18n='{{ ui|tojson }}'>
+        <div class="card-body p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="font-bold text-sm">{{ ui.deploy_method_3_title }}</h4>
+              <p class="text-xs opacity-75">{{ ui.deploy_method_3_desc }}</p>
+            </div>
+            <span class="badge badge-ghost" data-device-status>{{ ui.status_disconnected }}</span>
+          </div>
+
+          <p class="text-xs opacity-70">{{ ui.ble_hint }}</p>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-sm btn-accent" data-device-action="connect-ble">{{ ui.ble_connect }}</button>
+            <button type="button" class="btn btn-sm btn-outline" data-device-action="connect-usb">{{ ui.usb_connect }}</button>
+            <button type="button" class="btn btn-sm btn-ghost" data-device-action="disconnect">{{ ui.usb_disconnect }}</button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex items-center gap-2 text-sm">
+              <span>{{ ui.code_source }}</span>
+              <select class="select select-bordered select-sm" data-code-source>
+                <option value="python">{{ ui.code_source_python }}</option>
+                <option value="blocks">{{ ui.code_source_blocks }}</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <span>{{ ui.slot_label }}</span>
+              <select class="select select-bordered select-sm" data-device-slot>
+                {% for n in range(20) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+              </select>
+            </label>
+            <button type="button" class="btn btn-sm btn-primary" data-device-action="upload-run" data-needs-hub disabled>▶ {{ ui.upload_run }}</button>
+            <button type="button" class="btn btn-sm btn-error btn-outline" data-device-action="stop" data-needs-hub disabled>■ {{ ui.stop_program }}</button>
+            <progress class="progress progress-primary w-40 hidden" value="0" max="100" data-device-progress></progress>
+          </div>
+
+          <pre id="device-log" class="bg-slate-950 text-emerald-400 text-xs p-3 rounded-lg h-40 overflow-y-auto font-mono whitespace-pre-wrap"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

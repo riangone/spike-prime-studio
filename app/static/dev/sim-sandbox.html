@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>SPIKE Prime LDraw + Simulator Sandbox</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .layout { display: grid; grid-template-columns: 1fr 400px; height: 100%; }
+    #c { width: 100%; height: 100%; }
+    .side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-left: 1px solid #334155; background: #1e293b; }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    select, button { padding: 6px 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; cursor: pointer; font-size: 13px; }
+    button.primary { background: #10b981; color: #052e16; border-color: #10b981; font-weight: 700; }
+    textarea { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; background: #020617; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; padding: 10px; resize: none; }
+    pre { margin: 0; font-size: 11px; background: #020617; color: #34d399; padding: 8px; border-radius: 6px; min-height: 60px; max-height: 110px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div id="c"></div>
+    <div class="side">
+      <div class="row">
+        <select id="preset">
+          <option value="base">LDraw Driving Base (Gyro 90° Square)</option>
+          <option value="obst">LDraw Obstacle Avoider (3D Raycast Wall)</option>
+          <option value="color">LDraw Color Detective (3D Floor Patches)</option>
+          <option value="spinner">LDraw Spinner (Motor A Pointer)</option>
+        </select>
+        <button id="run" class="primary">▶ Run</button>
+        <button id="reset">↺ Reset</button>
+      </div>
+      <div id="status" style="font-size:12px;font-family:monospace;color:#fbbf24;">Ready</div>
+      <textarea id="code"></textarea>
+      <pre id="log"></pre>
+    </div>
+  </div>
+  <script>window.SPIKE_BASE_PATH = '';</script>
+  <script type="module">
+    import '/static/js/viewer3d.js';
+    import { SpikeSimulationEngine } from '/static/js/sim/engine.js';
+
+    const PRESETS = {
+      base: {
+        scene: '/static/dev/base.json',
+        props: [],
+        code: `import runloop, motor_pair
+from hub import light_matrix, motion_sensor, port
+
+async def turn_right(deg):
+    motion_sensor.reset_yaw(0)
+    while True:
+        rem = deg - abs(motion_sensor.tilt_angles()[0]) / 10
+        if rem <= 1:
+            break
+        spd = max(80, min(300, int(rem * 6)))
+        motor_pair.move_tank(motor_pair.PAIR_1, spd, -spd)
+        await runloop.sleep_ms(10)
+    motor_pair.stop(motor_pair.PAIR_1)
+
+async def main():
+    motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+    light_matrix.show_image(light_matrix.IMAGE_ARROW_N)
+    for i in range(4):
+        await motor_pair.move_for_degrees(motor_pair.PAIR_1, 400, 0, velocity=450)
+        await turn_right(90)
+        print("Corner", i + 1, "done")
+    light_matrix.show_image(light_matrix.IMAGE_YES)
+
+runloop.run(main())`,
+      },
+      obst: {
+        scene: '/static/dev/obst.json',
+        props: [{ type: 'box', pos: [0, 2.0, -18.0], size: [10, 4, 1.6], color: '#ef4444' }],
+        code: `import runloop, motor_pair, distance_sensor
+from hub import light_matrix, port
+
+async def main():
+    motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+    light_matrix.show_image(light_matrix.IMAGE_ARROW_N)
+    while True:
+        d = distance_sensor.distance(port.F)
+        if 0 < d < 180:
+            print("Wall at", d, "mm -> avoiding")
+            motor_pair.stop(motor_pair.PAIR_1)
+            light_matrix.show_image(light_matrix.IMAGE_NO)
+            await motor_pair.move_for_degrees(motor_pair.PAIR_1, -180, 0, velocity=300)
+            await motor_pair.move_for_degrees(motor_pair.PAIR_1, 220, 100, velocity=300)
+            light_matrix.show_image(light_matrix.IMAGE_ARROW_N)
+        else:
+            motor_pair.move(motor_pair.PAIR_1, 0, velocity=350)
+        await runloop.sleep_ms(40)
+
+runloop.run(main())`,
+      },
+      color: {
+        scene: '/static/dev/color.json',
+        props: [
+          { type: 'patch', pos: [0, 0, -7.0], size: [6, 2.5], color: '#22c55e', spike_color: 'GREEN' },
+          { type: 'patch', pos: [0, 0, -12.0], size: [6, 2.5], color: '#ef4444', spike_color: 'RED' },
+        ],
+        code: `import runloop, motor_pair, color_sensor, color
+from hub import light_matrix, port
+
+async def main():
+    motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+    motor_pair.move(motor_pair.PAIR_1, 0, velocity=280)
+    while color_sensor.color(port.E) != color.RED:
+        if color_sensor.color(port.E) == color.GREEN:
+            light_matrix.show_image(light_matrix.IMAGE_YES)
+            print("Saw GREEN!")
+        await runloop.sleep_ms(20)
+    motor_pair.stop(motor_pair.PAIR_1)
+    light_matrix.show_image(light_matrix.IMAGE_NO)
+    print("Stopped on RED")
+
+runloop.run(main())`,
+      },
+      spinner: {
+        scene: '/static/dev/spinner.json',
+        props: [],
+        code: `import runloop, motor
+from hub import light_matrix, port
+
+async def main():
+    light_matrix.show_image(light_matrix.IMAGE_HAPPY)
+    await motor.run_for_degrees(port.A, 360, 360)
+    for i in range(4):
+        await motor.run_for_degrees(port.A, 90, 300)
+        print("Tick", i + 1)
+        await runloop.sleep_ms(150)
+    light_matrix.show_image(light_matrix.IMAGE_YES)
+
+runloop.run(main())`,
+      },
+    };
+
+    const viewer = new window.Spike3DViewer('c');
+    let engine = null;
+    let raf = null;
+    let lastTs = 0;
+
+    async function loadPreset(key) {
+      if (engine) { engine.stop(); engine = null; }
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      const p = PRESETS[key] || PRESETS.base;
+      const data = await (await fetch(p.scene)).json();
+      data.floor_props = p.props;
+      const built = await viewer.buildSceneObjects(data);
+      viewer.sceneData = data;
+      viewer.applyBuilt(built);
+      viewer.resetCamera();
+      viewer.setStep(99);
+      for (const e of viewer.partEntries) { e.highlighted = false; e.mesh.position.copy(e.currentTarget); }
+      document.getElementById('code').value = p.code;
+      document.getElementById('log').textContent = '';
+      document.getElementById('status').textContent = `Loaded LDraw preset: ${key}`;
+      window.__ready = true;
+    }
+
+    function runSim() {
+      if (engine) engine.stop();
+      if (raf) cancelAnimationFrame(raf);
+      document.getElementById('log').textContent = '';
+      viewer.showAllForSim();
+      viewer.clearTrail();
+      engine = new SpikeSimulationEngine(viewer.sceneData, {
+        onLed: (px) => viewer.setLedMatrix(px),
+        onPlunger: (id, v) => viewer.setPlunger(id, v),
+        onPrint: (m) => { document.getElementById('log').textContent += m + '\n'; },
+        onDone: () => { document.getElementById('status').textContent = `Done (${(engine.world.timeMs / 1000).toFixed(1)}s)`; },
+        onError: (e) => { document.getElementById('status').textContent = `Error: ${e.message}`; },
+      });
+      engine.start(document.getElementById('code').value);
+      lastTs = performance.now();
+      const tick = async (ts) => {
+        if (!engine || engine.state !== 'running') return;
+        const dt = Math.min(ts - lastTs, 60);
+        lastTs = ts;
+        await engine.stepMs(dt);
+        const s = engine.getSnapshot();
+        viewer.setMotorAngles(s.motorAngles);
+        viewer.setChassisPose(s.chassis.x, s.chassis.z, s.chassis.yaw);
+        if (engine.world.kinematics?.chassis?.type !== 'static') viewer.appendTrailPoint(s.chassis.x, s.chassis.z);
+        document.getElementById('status').textContent = `t=${(s.timeMs / 1000).toFixed(1)}s · Yaw=${s.yawDeg}°`;
+        if (engine.state === 'running') raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }
+
+    document.getElementById('preset').addEventListener('change', (e) => loadPreset(e.target.value));
+    document.getElementById('run').addEventListener('click', runSim);
+    document.getElementById('reset').addEventListener('click', () => {
+      if (engine) engine.stop();
+      viewer.resetSim();
+      document.getElementById('status').textContent = 'Reset';
+    });
+
+    window.__sandbox = { loadPreset, runSim, viewer, getEngine: () => engine };
+    const initPreset = new URLSearchParams(location.search).get('preset') || 'base';
+    document.getElementById('preset').value = initPreset;
+    await loadPreset(initPreset);
+  </script>
+</body>
+</html>

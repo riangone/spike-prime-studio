@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"}}</script>
+<style>html,body{margin:0;height:100%}#c{width:100%;height:100%}</style></head>
+<body><div id="c"></div>
+<script>window.SPIKE_BASE_PATH='';</script>
+<script type="module">
+import '/static/js/viewer3d.js';
+const v = new window.Spike3DViewer('c');
+const q = new URLSearchParams(location.search);
+const data = await (await fetch(q.get('scene') || '/static/dev/catalog.json')).json();
+const built = await v.buildSceneObjects(data);
+v.sceneData = data; v.applyBuilt(built); v.resetCamera();
+if (q.get('cam')) { const c = JSON.parse(q.get('cam')); v.camera.position.set(...c.pos); v.controls.target.set(...c.target); v.controls.update(); }
+v.setStep(99); for (const e of v.partEntries) { e.highlighted=false; e.mesh.position.copy(e.currentTarget); }
+if (q.get('angles')) { v.simActive = true; v.setMotorAngles(JSON.parse(q.get('angles'))); }
+v.setLedMatrix(Array(25).fill(80));
+window.__ready = true;
+</script></body></html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-theme="night">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#fbbd23" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SPIKE 3D" />
+  <link rel="manifest" href="{{ base }}/manifest.webmanifest?lang={{ lang }}" />
+  <link rel="icon" type="image/svg+xml" href="{{ base }}/static/icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ base }}/static/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ base }}/static/icons/apple-touch-icon.png" />
+  <title>{{ ui.app_title }}</title>
+  <script>
+    try { const t = localStorage.getItem('spike_theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (_) {}
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+  <link href="{{ base }}/static/css/studio.css?v={{ asset_v }}" rel="stylesheet" />
+  <style>
+    /* Blockly toolbox: keep category labels readable on every DaisyUI theme */
+    #blockly-host .blocklyTreeLabel, #blockly-host .blocklyToolboxCategoryLabel { color: #1e293b; font-weight: 600; }
+    #blockly-host .blocklyToolboxDiv, #blockly-host .blocklyToolbox { background: #f1f5f9; }
+  </style>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content">
+  <!-- Navbar -->
+  <header class="navbar bg-base-100 border-b border-base-300 px-4 sticky top-0 z-30">
+    <div class="flex-1 gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-warning text-warning-content font-black flex items-center justify-center shadow">
+        S3
+      </div>
+      <div class="min-w-0">
+        <div class="font-bold text-base sm:text-lg leading-tight truncate">{{ ui.app_title }}</div>
+        <div class="text-xs opacity-70 truncate hidden sm:block">{{ ui.app_subtitle }}</div>
+      </div>
+      <span class="badge badge-warning badge-sm font-semibold hidden sm:inline-flex">{{ ui.firmware_badge }}</span>
+    </div>
+
+    <div class="flex-none gap-2">
+      <!-- PWA Install Button (hidden until beforeinstallprompt fires) -->
+      <button type="button" id="pwa-install-btn" data-pwa-install hidden
+              class="btn btn-xs sm:btn-sm btn-warning gap-1 font-semibold"
+              title="{{ ui.pwa_install_hint }}">
+        📲 <span class="hidden sm:inline">{{ ui.pwa_install }}</span>
+      </button>
+
+      <!-- Language Switcher -->
+      <div class="join">
+        {% for code, label in supported_langs.items() %}
+        <a href="{{ base }}/?lesson={{ lesson.id }}&step={{ current_step.step }}&lang={{ code }}{% if program_mode != 'blockly' %}&mode={{ program_mode }}{% endif %}"
+           data-lang-link="{{ code }}"
+           class="btn btn-xs sm:btn-sm join-item {% if lang == code %}btn-primary{% else %}btn-ghost{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Theme Switcher -->
+      <select class="select select-bordered select-xs sm:select-sm w-20 sm:w-auto" data-theme-select aria-label="{{ ui.theme }}">
+        <option value="night">Night</option>
+        <option value="light">Light</option>
+        <option value="cupcake">Cupcake</option>
+        <option value="dracula">Dracula</option>
+        <option value="corporate">Corporate</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Sidebar: Lessons -->
+    <aside class="lg:col-span-3 space-y-4">
+      <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4">
+          <h2 class="card-title text-sm uppercase tracking-wider opacity-70">{{ ui.lessons }}</h2>
+          <div class="flex items-center justify-between gap-2 -mt-1">
+            <span class="text-[11px] opacity-60">{{ ui.curriculum_title }} · {{ lesson_groups|length }}</span>
+            <span class="text-[11px] font-mono opacity-60" data-progress-label></span>
+          </div>
+          <progress class="progress progress-warning h-1.5" value="0" max="{{ lesson_groups|map(attribute='items')|map('length')|sum }}" data-progress-bar></progress>
+          <ul class="menu menu-sm p-0 gap-1">
+            {% for group in lesson_groups %}
+            <li class="menu-title pt-3 first:pt-1 text-[11px]">{{ group.title }}</li>
+            {% for item in group["items"] %}
+            <li>
+              <a hx-get="{{ base }}/partials/lesson/{{ item.id }}?lang={{ lang }}{% if program_mode != 'blockly' %}&mode={{ program_mode }}{% endif %}"
+                 hx-target="#lesson-workspace"
+                 hx-swap="innerHTML"
+                 hx-replace-url="{{ base }}/?lesson={{ item.id }}"
+                 data-lesson-nav="{{ item.id }}"
+                 class="flex items-start gap-2 py-2.5 {% if item.id == lesson.id %}active{% endif %}">
+                <span class="badge badge-sm badge-neutral font-mono shrink-0 mt-0.5">{{ item.num }}</span>
+                <span class="flex flex-col items-start gap-1 min-w-0">
+                  <span class="font-semibold leading-snug">{{ item.title }}</span>
+                  <span class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs opacity-75">
+                    <span class="text-warning tracking-tight">{% for n in range(item.stars) %}★{% endfor %}</span>
+                    <span>{{ item.difficulty }}</span>
+                    <span>· {{ item.duration }}</span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            {% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4 space-y-2.5">
+          <h2 class="card-title text-sm uppercase tracking-wider opacity-70">🏁 {{ ui.curriculum_title }}</h2>
+          {% for group in lesson_groups %}
+          <div class="flex items-center gap-2">
+            <div class="text-[11px] opacity-75 flex-1 leading-snug">{{ group.title }}</div>
+            <div class="flex gap-0.5 shrink-0" data-level-meter="{{ group.key }}">
+              {% for item in group["items"] %}
+              <button type="button" class="btn btn-xs btn-ghost px-1.5 font-mono" data-lesson-nav="{{ item.id }}"
+                      title="{{ item.title }}" aria-label="{{ item.title }}">{{ item.num }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+          <p class="text-[11px] opacity-60 leading-snug">{{ ui.progress_hint }}</p>
+        </div>
+      </div>
+
+      <div class="alert bg-base-100 border border-base-300 text-xs leading-relaxed">
+        <span>{{ ui.ldraw_note }}</span>
+      </div>
+    </aside>
+
+    <!-- Workspace: 3D Viewer + Step Guide + Code + Deploy -->
+    <section class="lg:col-span-9 space-y-4">
+      <!-- 3D Viewer Card (persists across HTMX step/lesson swaps) -->
+      <div class="card bg-base-100 shadow-sm border border-base-300 overflow-hidden">
+        <div class="relative w-full h-[420px] sm:h-[480px] bg-slate-200">
+          <div id="viewer3d-canvas" class="w-full h-full"></div>
+
+          <!-- Overlay Controls -->
+          <div class="absolute top-3 right-3 flex flex-wrap gap-2">
+            <button type="button" class="btn btn-xs sm:btn-sm btn-neutral bg-neutral/85 backdrop-blur"
+                    onclick="window.SpikeViewer && window.SpikeViewer.toggleCables()">
+              ⚡ {{ ui.toggle_cables }}
+            </button>
+            <button type="button" class="btn btn-xs sm:btn-sm btn-neutral bg-neutral/85 backdrop-blur"
+                    onclick="window.SpikeViewer && window.SpikeViewer.toggleExplode()">
+              {{ ui.explode_view }}
+            </button>
+            <button type="button" class="btn btn-xs sm:btn-sm btn-neutral bg-neutral/85 backdrop-blur"
+                    onclick="window.SpikeViewer && window.SpikeViewer.resetCamera()">
+              {{ ui.reset_camera }}
+            </button>
+          </div>
+
+          <div class="absolute bottom-2 left-3 text-[11px] text-slate-700 bg-white/80 backdrop-blur px-2.5 py-0.5 rounded shadow-sm">
+            {{ ui.drag_hint }}
+          </div>
+        </div>
+
+        <!-- Live 3D Simulator Bar -->
+        <div class="bg-base-200/80 border-t border-base-300 px-3 sm:px-4 py-2.5 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" id="sim-btn-run" class="btn btn-xs sm:btn-sm btn-success gap-1 font-bold" data-sim-action="run">
+                ▶ {{ ui.sim_run }}
+              </button>
+              <button type="button" id="sim-btn-pause" class="btn btn-xs sm:btn-sm btn-warning gap-1 font-bold hidden" data-sim-action="pause">
+                ⏸ {{ ui.sim_pause }}
+              </button>
+              <button type="button" id="sim-btn-stop" class="btn btn-xs sm:btn-sm btn-error gap-1 font-bold hidden" data-sim-action="stop">
+                ⏹ {{ ui.sim_stop }}
+              </button>
+              <button type="button" class="btn btn-xs sm:btn-sm btn-ghost" data-sim-action="reset" title="{{ ui.sim_reset }}">
+                ↺ {{ ui.sim_reset }}
+              </button>
+              <button type="button" class="btn btn-xs btn-ghost font-mono" data-sim-action="speed" title="Simulation speed">1×</button>
+              <button type="button" class="btn btn-xs btn-ghost font-mono" data-sim-action="source" title="Code source (Auto / Python / Blocks)">⚡ Auto</button>
+              <button type="button" class="btn btn-xs sm:btn-sm btn-ghost" data-sim-action="mute" title="Sound">🔊</button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5 min-w-0">
+              <!-- Live 5x5 LED Matrix Mini HUD -->
+              <div id="sim-led-mini" class="grid grid-cols-5 gap-[2px] p-1 rounded bg-slate-950 border border-base-300 shrink-0" title="Hub 5×5 LED"></div>
+              <span id="sim-status-text" class="text-xs font-mono opacity-80 truncate max-w-[200px] sm:max-w-[280px]">{{ ui.sim_ready }}</span>
+              <span id="sim-telemetry" class="text-[11px] font-mono opacity-65 hidden md:inline"></span>
+            </div>
+          </div>
+
+          <!-- Interactive Virtual Sensors & Hub Buttons (shown when simulator is active) -->
+          <div id="sim-sensor-bar" class="hidden flex flex-wrap items-center gap-2.5 pt-1.5 border-t border-base-300/60 text-xs">
+            <div class="join">
+              <button type="button" class="btn btn-xs btn-outline join-item" data-sim-action="hub-left">◀ {{ ui.sim_btn_left }}</button>
+              <button type="button" class="btn btn-xs btn-outline join-item" data-sim-action="hub-right">{{ ui.sim_btn_right }} ▶</button>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline" data-sim-action="force">🔘 {{ ui.sim_force }}</button>
+            <label class="flex items-center gap-1.5">
+              <span class="opacity-75">📏 {{ ui.sim_dist }}:</span>
+              <input type="range" min="5" max="150" value="45" class="range range-xs range-primary w-24" data-sim-distance>
+              <span id="sim-distance-val" class="font-mono w-11">45 cm</span>
+              <button type="button" id="sim-dist-mode" class="badge badge-xs badge-ghost font-mono cursor-pointer" data-sim-action="toggle-dist-auto" title="Toggle Auto (3D raycast) / Manual">MAN</button>
+            </label>
+            <div class="flex items-center gap-1">
+              <span class="opacity-75">🎨</span>
+              <button type="button" class="w-4 h-4 rounded-full bg-red-500 border border-base-300 ring-2 ring-primary" data-sim-action="color" data-sim-color="RED" title="Red"></button>
+              <button type="button" class="w-4 h-4 rounded-full bg-blue-500 border border-base-300" data-sim-action="color" data-sim-color="BLUE" title="Blue"></button>
+              <button type="button" class="w-4 h-4 rounded-full bg-green-500 border border-base-300" data-sim-action="color" data-sim-color="GREEN" title="Green"></button>
+              <button type="button" class="w-4 h-4 rounded-full bg-yellow-400 border border-base-300" data-sim-action="color" data-sim-color="YELLOW" title="Yellow"></button>
+              <button type="button" class="w-4 h-4 rounded-full bg-slate-900 border border-base-300" data-sim-action="color" data-sim-color="BLACK" title="Black"></button>
+              <button type="button" class="w-4 h-4 rounded-full bg-white border border-slate-400" data-sim-action="color" data-sim-color="WHITE" title="White"></button>
+              <button type="button" id="sim-color-mode" class="badge badge-xs badge-ghost font-mono cursor-pointer ml-0.5" data-sim-action="toggle-color-auto" title="Toggle Auto (3D floor) / Manual">MAN</button>
+            </div>
+          </div>
+
+          <!-- Console output (shown on print() or error) -->
+          <div id="sim-console-wrap" class="hidden pt-1 border-t border-base-300/60">
+            <div id="sim-console-log" class="bg-slate-950 text-emerald-400 text-[11px] font-mono rounded-lg px-2.5 py-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Lesson Workspace -->
+      <div id="lesson-workspace">
+        {% include "partials/lesson_panel.html" %}
+      </div>
+    </section>
+  </main>
+
+  <script>window.SPIKE_BASE_PATH = {{ base|tojson }};</script>
+  <script src="{{ base }}/static/js/app.js?v={{ asset_v }}"></script>
+  <script src="{{ base }}/static/js/progress.js?v={{ asset_v }}"></script>
+  <script type="module" src="{{ base }}/static/js/viewer3d.js?v={{ asset_v }}"></script>
+  <script type="module" src="{{ base }}/static/js/simulator.js?v={{ asset_v }}"></script>
+  <script type="module" src="{{ base }}/static/js/spike-device.js?v={{ asset_v }}"></script>
+  <script type="module" src="{{ base }}/static/js/blocks.js?v={{ asset_v }}" data-lang="{{ lang }}" id="blocks-module"></script>
+</body>
+</html>

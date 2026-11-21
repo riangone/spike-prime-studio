@@ -1,0 +1,69 @@
+/* Workspace tabs: a self-contained flex row with DaisyUI's "lifted" look.
+   DaisyUI's own `.tabs` is a CSS grid whose `grid-auto-columns` react to the widest panel
+   (`span 9999`), which is what used to squeeze the tab labels when the Python guide opened. */
+
+.tabs-lifted-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--fallback-b3, oklch(var(--b3) / 1));
+}
+
+.tabs-lifted-row .tab {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 2.4rem;
+  margin-bottom: -1px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-top-left-radius: var(--rounded-box, 1rem);
+  border-top-right-radius: var(--rounded-box, 1rem);
+  color: var(--fallback-bc, oklch(var(--bc) / 0.6));
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.tabs-lifted-row .tab:hover {
+  color: var(--fallback-bc, oklch(var(--bc) / 0.85));
+}
+
+.tabs-lifted-row .tab.tab-active,
+.tabs-lifted-row .tab[aria-selected="true"] {
+  cursor: default;
+  border-color: var(--fallback-b3, oklch(var(--b3) / 1));
+  border-bottom-color: var(--fallback-b1, oklch(var(--b1) / 1));
+  background-color: var(--fallback-b1, oklch(var(--b1) / 1));
+  color: var(--fallback-bc, oklch(var(--bc) / 1));
+}
+
+.tabs-lifted-row .lifted-spacer {
+  flex: 1 1 0%;
+  min-width: 0.5rem;
+  border-bottom: 1px solid transparent;
+}
+
+/* Panels are ordinary block boxes; they never influence the tab row's size. */
+.tab-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+[role="tabpanel"][hidden] {
+  display: none !important;
+}
+
+/* Curriculum picker: honest progress display (★ N / 5). */
+.star-meter {
+  letter-spacing: 0.05em;
+}
+.star-meter .on {
+  color: var(--fallback-wa, oklch(var(--wa) / 1));
+}
+.star-meter .off {
+  opacity: 0.35;
+}
